@@ -31,6 +31,11 @@ type Win32_BIOS struct {
 	SerialNumber string
 }
 
+type AntiVirusProduct struct {
+	DisplayName  string
+	ProductState uint32
+}
+
 func newStaticInfo() StaticInfo {
 	si := StaticInfo{}
 
@@ -60,6 +65,11 @@ func newStaticInfo() StaticInfo {
 	wg.Add(1)
 	go func() {
 		si.BuildVersion = getBuildVersion()
+		wg.Done()
+	}()
+	wg.Add(1)
+	go func() {
+		si.AntiVirus = getAntiVirus()
 		wg.Done()
 	}()
 	wg.Wait()
@@ -181,4 +191,36 @@ func getBuildVersion() string {
 	}
 	ver := fmt.Sprintf("%d.%d.%s.%d", major, minor, build, ubr)
 	return ver
+}
+
+func getAntiVirus() string {
+	var dst []AntiVirusProduct
+	query := "SELECT * FROM AntiVirusProduct"
+	err := wmi.QueryNamespace(query, &dst, "root\\SecurityCenter2")
+	if err != nil {
+		log.Warnf("failed to query antivirus: %s", err)
+		return "unknown"
+	}
+
+	var active []string
+	var installed []string
+
+	for _, av := range dst {
+		installed = append(installed, av.DisplayName)
+		// ProductState bit 16 (0x10000) indicates if the product is enabled
+		// ref: https://www.idera.com/blogs/identifying-antivirus-engine-state/
+		if av.ProductState&0x10000 != 0 {
+			active = append(active, av.DisplayName)
+		}
+	}
+
+	if len(active) == 0 {
+		if len(installed) == 0 {
+			return "none"
+		}
+		return fmt.Sprintf("installed: %s", strings.Join(installed, ", "))
+	}
+
+	// assuming only one AV active
+	return active[0]
 }

@@ -57,6 +57,7 @@ type Info struct {
 	SystemProductName  string
 	SystemManufacturer string
 	Environment        Environment
+	AntiVirus          string
 	Files              []File // for posture checks
 
 	RosenpassEnabled    bool

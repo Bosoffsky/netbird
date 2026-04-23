@@ -22,6 +22,7 @@ type StaticInfo struct {
 	OSName       string
 	OSVersion    string
 	BuildVersion string
+	AntiVirus    string
 }
 
 func updateStaticInfo() {
